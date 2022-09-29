@@ -71,7 +71,6 @@ class Command(BaseCommand):
             queue_afk_check.start()
             update_queues_shown.start()
             clear_queues_channel.start()
-            sky_stock_joke.start()
 
             activate_queue_channels.start()
             deactivate_queue_channels.start()
@@ -192,43 +191,6 @@ class Command(BaseCommand):
             outdated = timezone.now() - self.last_queues_update > timedelta(minutes=5)
             if queued_players != self.queued_players or outdated:
                 await self.queues_show()
-
-        @tasks.loop(minutes=1)
-        async def sky_stock_joke():
-            import yfinance as yf
-            from app.stock_joke.models import StockJokeSettings
-            from app.stock_joke.models import StockBuyer
-
-            settings = StockJokeSettings.get_solo()
-            if not settings.enabled:
-                return
-
-            try:
-                ticker_data = yf.download(tickers=settings.stock_ticker, period='1d', interval='1m')
-                ticker_price = ticker_data['Close'][-1]
-                print('ticker price: ', ticker_price)
-
-                guild = self.bot.get_guild(settings.discord_server_id)
-                green_role = discord.utils.get(guild.roles, id=settings.greed_role_id)
-                red_role = discord.utils.get(guild.roles, id=settings.red_role_id)
-
-                for buyer in StockBuyer.objects.all():
-                    buyer_discord = discord.utils.get(self.bot.get_all_members(), id=buyer.discord_id)
-                    entry_price = buyer.entry_price
-                    if ticker_price <= entry_price:
-                        await buyer_discord.remove_roles(green_role)
-                        await buyer_discord.add_roles(red_role)
-
-                        pct_loss = (entry_price - ticker_price) / entry_price * 100
-                        await buyer_discord.edit(nick=f'{buyer.name} is red -{pct_loss:.2f}%')
-                    else:
-                        await buyer_discord.remove_roles(red_role)
-                        await buyer_discord.add_roles(green_role)
-
-                        pct_gain = (ticker_price - entry_price) / entry_price * 100
-                        await buyer_discord.edit(nick=f'{buyer.name} is green +{pct_gain:.2f}%')
-            except:
-                pass  # avoid crashing on lack of permissions or yahoo finance throttle
 
         @tasks.loop(minutes=1)
         async def activate_queue_channels():
@@ -427,14 +389,14 @@ class Command(BaseCommand):
 
         player = Command.get_player_by_name(name)
         if not player:
-            await msg.channel.send(f'`{name}`: I don\'t know him')
+            await msg.channel.send(f'`{name}`: I don\'t know them')
             return
 
         player.vouched = True
         player.save()
 
         await msg.channel.send(
-            f'{self.player_mention(player)} has been vouched. He can play now!'
+            f'{self.player_mention(player)} has been vouched. They can play now!'
         )
 
     async def whois_command(self, msg, **kwargs):
@@ -452,7 +414,7 @@ class Command(BaseCommand):
 
         player = player or Command.get_player_by_name(name)
         if not player:
-            await msg.channel.send(f'`{name}`: I don\'t know him')
+            await msg.channel.send(f'`{name}`: I don\'t know them')
             return
 
         dotabuff = f'https://www.dotabuff.com/players/{player.dota_id}'
@@ -496,7 +458,7 @@ class Command(BaseCommand):
 
         player = Command.get_player_by_name(name)
         if not player:
-            await msg.channel.send(f'`{name}`: I don\'t know him')
+            await msg.channel.send(f'`{name}`: I don\'t know them')
             return
 
         player.banned = Player.BAN_PLAYING
@@ -520,7 +482,7 @@ class Command(BaseCommand):
 
         player = Command.get_player_by_name(name)
         if not player:
-            await msg.channel.send(f'`{name}`: I don\'t know him')
+            await msg.channel.send(f'`{name}`: I don\'t know them')
             return
 
         player.banned = None
@@ -590,7 +552,7 @@ class Command(BaseCommand):
 
         player = Command.get_player_by_name(name)
         if not player:
-            await msg.channel.send(f'`{name}`: I don\'t know him')
+            await msg.channel.send(f'`{name}`: I don\'t know them')
             return
 
         # check that player is not in a queue already
@@ -635,7 +597,7 @@ class Command(BaseCommand):
 
         player = Command.get_player_by_name(name)
         if not player:
-            await msg.channel.send(f'`{name}`: I don\'t know him')
+            await msg.channel.send(f'`{name}`: I don\'t know them')
             return
 
         deleted, _ = QueuePlayer.objects \
@@ -668,7 +630,7 @@ class Command(BaseCommand):
 
         victim = Command.get_player_by_name(name)
         if not victim:
-            await msg.channel.send(f'`{name}`: I don\'t know him')
+            await msg.channel.send(f'`{name}`: I don\'t know them')
             return
 
         if victim not in queue.players.all():
@@ -811,7 +773,7 @@ class Command(BaseCommand):
 
         player = player or Command.get_player_by_name(name)
         if not player:
-            await msg.channel.send(f'`{name}`: I don\'t know him')
+            await msg.channel.send(f'`{name}`: I don\'t know them')
             return
 
         mps = player.matchplayer_set.filter(match__season=LadderSettings.get_solo().current_season)
@@ -964,7 +926,7 @@ class Command(BaseCommand):
         if name:
             player = Command.get_player_by_name(name)
             if not player:
-                await msg.channel.send(f'`{name}`: I don\'t know him')
+                await msg.channel.send(f'`{name}`: I don\'t know them')
                 return
 
         host = os.environ.get('BASE_URL', 'localhost:8000')
@@ -1019,7 +981,7 @@ class Command(BaseCommand):
 
         player = Command.get_player_by_name(mention)
         if not player:
-            await msg.channel.send(f'I don\'t know him')
+            await msg.channel.send(f'I don\'t know them')
             return
 
         player.name = new_name
@@ -1042,7 +1004,7 @@ class Command(BaseCommand):
 
         player = Command.get_player_by_name(name)
         if not player:
-            await msg.channel.send(f'`{name}`: I don\'t know him')
+            await msg.channel.send(f'`{name}`: I don\'t know them')
             return
 
         ScoreChange.objects.create(
@@ -1069,7 +1031,7 @@ class Command(BaseCommand):
 
         player = Command.get_player_by_name(name)
         if not player:
-            await msg.channel.send(f'I don\'t know him')
+            await msg.channel.send(f'I don\'t know them')
             return
 
         player.dota_id = dota_id
